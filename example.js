@@ -12,9 +12,13 @@ function MyParentComponent() {
     );
 
     useEffect(() => {
-        console.log("MyParentComponent useEffect");
+        console.log("MyParentComponent useEffect (one time render)");
         setCount(1);
     }, []);
+
+    useEffect(() => {
+        console.log("MyParentComponent useEffect (every render)");
+    });
 
     return [MyChildComponent, {}];
 }
