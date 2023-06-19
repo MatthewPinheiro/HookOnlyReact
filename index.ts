@@ -144,7 +144,7 @@ function useSomeAsyncData(timeToWait: number) {
 
     useEffect(() => {
         console.log("useSomeAsyncData useEffect");
-        setTimeout(setData, timeToWait, { some: "data" });
+        setTimeout(() => setData({ some: "data" }), timeToWait);
     }, []);
 
     return data;
