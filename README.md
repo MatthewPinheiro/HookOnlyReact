@@ -1,0 +1,1 @@
+This is my own, ~100 line implementation of some of the more core parts of React (notably hooks and the render lifecycle). Purely for illustrative purposes, in case you want an easier way to understand how and why hooks work without combing through the entire React src. No DOM and no JSX.

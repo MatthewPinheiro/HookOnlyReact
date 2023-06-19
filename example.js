@@ -3,7 +3,7 @@ const { render, useState, useEffect } = require(".");
 
 
 function MyParentComponent() {
-    const data = useSomeAsyncData();
+    const data = useMyCustomAsyncHook();
     const [count, setCount] = useState(0);
 
     console.log("Rendering MyParentComponent:",
@@ -33,7 +33,7 @@ function MyChildComponent() {
 
 
 
-function useSomeAsyncData() {
+function useMyCustomAsyncHook() {
     const [data, setData] = /** @type {typeof useState<any>} */ (useState)(null);
 
     useEffect(() => {

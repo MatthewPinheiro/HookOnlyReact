@@ -1,18 +1,9 @@
-/** @typedef {(props: Record<string, any>) => [Component, Record<string, any>] | []} Component */
-
+/** @typedef {import('./types').Component} Component */
+/** @typedef {import('./types').ComponentTreeNode} ComponentTreeNode */
 /** 
- * @typedef {{
- *  fn: Component;
- *  props: Record<string, any>,
- *  hooks: any[];
- *  child?: ComponentTreeNode;
- * }} ComponentTreeNode
- * */
-
-/**
+ * @typedef {import('./types').UseStateArr<T>} UseStateArr 
  * @template T
- * @typedef {[T, (toUpdate: T) => void]} UseStateArr
- */
+ **/
 
 
 
@@ -51,11 +42,6 @@ function _recursivelyRender(treeNode) {
         _recursivelyRender(treeNode.child);
     }
 }
-
-
-
-
-
 
 
 
