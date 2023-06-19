@@ -1,114 +1,106 @@
-type MattactComponent = (props: Record<string, any>) => [MattactComponent, Record<string, any>] | [];
-type MattactReturn = ReturnType<MattactComponent>;
+type Component = (props: Record<string, any>) => [Component, Record<string, any>] | [];
+type ComponentReturn = ReturnType<Component>;
 
 
 const { useState, render, useEffect } = (() => {
-    type ComponentTracker = {
-        fn: MattactComponent;
+    type ComponentTreeNode = {
+        fn: Component;
         props: Record<string, any>,
         hooks: any[];
-        index: number;
+        child?: ComponentTreeNode;
     }
 
-    let CURRENT_COMPONENT: ComponentTracker;
-    const NEXT_COMPONENTS = new Map<MattactComponent, ComponentTracker>();
-    const EFFECTS_TO_RUN: ([ComponentTracker, () => void])[] = [];
+    const RENDER_QUEUE = new Set<ComponentTreeNode>();
+    const EFFECTS_QUEUE: ([ComponentTreeNode, () => void])[] = [];
+    let CURRENT_COMPONENT: ComponentTreeNode;
+    let CURRENT_HOOK_INDEX: number;
 
 
-    let myChildTracker: ComponentTracker;
     function useEffect(fn: () => void, deps?: any[]) {
         const currentComponent = CURRENT_COMPONENT;
-        const prevDeps: any[] | undefined = currentComponent.hooks[currentComponent.index];
+        const prevDeps: any[] | undefined = currentComponent.hooks[CURRENT_HOOK_INDEX];
 
         const shouldRun = prevDeps && deps
             ? prevDeps.some((_, i) => prevDeps[i] !== deps[i])
             : true;
 
-        if (currentComponent.fn == MyChildComponent as any) {
-            if (myChildTracker !== currentComponent) console.log("NO MATCH!!!");
-            console.log(shouldRun, EFFECTS_TO_RUN.length, currentComponent);
-            myChildTracker = currentComponent;
-        }
         if (shouldRun) {
-            EFFECTS_TO_RUN.push([currentComponent, fn]);
+            EFFECTS_QUEUE.push([currentComponent, fn]);
         }
-        if (currentComponent.index >= currentComponent.hooks.length) {
+        if (CURRENT_HOOK_INDEX >= currentComponent.hooks.length) {
             currentComponent.hooks.push(deps);
         } else {
-            currentComponent.hooks[currentComponent.index] = deps;
+            currentComponent.hooks[CURRENT_HOOK_INDEX] = deps;
         }
 
-        currentComponent.index++;
+        CURRENT_HOOK_INDEX++;
     }
 
 
     function useState<T>(initialVal: T): [T, (toUpdate: T) => void] {
         const currentComponent = CURRENT_COMPONENT;
-        if (currentComponent.index >= currentComponent.hooks.length) {
+        if (CURRENT_HOOK_INDEX >= currentComponent.hooks.length) {
             const stateArr: [T, (toUpdate: T) => void] = [initialVal, (toUpdate: T) => {
                 const valAtThisTime = stateArr[0];
                 if (valAtThisTime !== toUpdate) {
                     stateArr[0] = toUpdate;
-                    NEXT_COMPONENTS.set(currentComponent.fn, currentComponent);
+                    RENDER_QUEUE.add(currentComponent);
                 }
             }];
             currentComponent.hooks.push(stateArr);
         }
 
-        const stateArr = currentComponent.hooks[currentComponent.index];
-        currentComponent.index++;
+        const stateArr = currentComponent.hooks[CURRENT_HOOK_INDEX];
+        CURRENT_HOOK_INDEX++;
 
         return stateArr;
     }
 
 
-    function initialRender(initial: MattactComponent) {
-        CURRENT_COMPONENT = {
-            fn: initial,
-            props: {},
-            hooks: [],
-            index: 0
-        };
-
-        NEXT_COMPONENTS.set(CURRENT_COMPONENT.fn, CURRENT_COMPONENT);
-        _render();
-    }
-
-    function _render() {
-        for (const [component, tracker] of NEXT_COMPONENTS) {
-            NEXT_COMPONENTS.delete(component);
-            CURRENT_COMPONENT = tracker;
-
-            tracker.index = 0;
-            const [componentToRegister, propsToAdd] = component(tracker.props);
-
-            if (componentToRegister && propsToAdd) {
-                const trackerToAdd = component === componentToRegister
-                    ? tracker
-                    : NEXT_COMPONENTS.get(componentToRegister) || {
-                        hooks: [],
-                        fn: componentToRegister,
-                        props: propsToAdd,
-                        index: 0
-                    };
-
-                NEXT_COMPONENTS.set(componentToRegister, trackerToAdd);
-            }
+    function render(initial?: Component) {
+        if (initial) {
+            RENDER_QUEUE.add({ fn: initial, props: {}, hooks: [] });
         }
 
-        // if (EFFECTS_TO_RUN.length) setImmediate(_render);
+        for (const node of RENDER_QUEUE) {
+            _recursivelyRender(node);
+        }
 
-        while (EFFECTS_TO_RUN.length) {
-            const [component, effect] = EFFECTS_TO_RUN[0];
+        while (EFFECTS_QUEUE.length) {
+            const [component, effect] = EFFECTS_QUEUE[0];
             CURRENT_COMPONENT = component;
             effect();
-            EFFECTS_TO_RUN.shift();
+            EFFECTS_QUEUE.shift();
         }
 
-        setImmediate(_render);
+        setImmediate(render).unref();
     }
 
-    return { useState, render: initialRender, useEffect };
+    function _recursivelyRender(treeNode: ComponentTreeNode) {
+        RENDER_QUEUE.delete(treeNode);
+        CURRENT_COMPONENT = treeNode;
+        CURRENT_HOOK_INDEX = 0;
+
+        const [currChildComp, props] = treeNode.fn(treeNode.props);
+        const prevChildComp = treeNode.child?.fn;
+
+        if (treeNode.child && Object.is(currChildComp, prevChildComp)) {
+            treeNode.child.props = props || {};
+        } else if (currChildComp) {
+            treeNode.child = {
+                fn: currChildComp,
+                props: props || {},
+                hooks: [],
+            };
+        }
+
+        if (treeNode.child) {
+            _recursivelyRender(treeNode.child);
+        }
+    }
+
+
+    return { render, useState, useEffect };
 })();
 
 
@@ -116,7 +108,7 @@ const { useState, render, useEffect } = (() => {
 
 
 
-function MyParentComponent() {
+function MyParentComponent(): ComponentReturn {
     const data = useSomeAsyncData(1000);
     const [count, setCount] = useState(0);
 
@@ -136,7 +128,7 @@ function MyParentComponent() {
 
 
 
-function MyChildComponent() {
+function MyChildComponent(): ComponentReturn {
     console.log("Rendering MyChildComponent");
 
     useEffect(() => {
@@ -159,4 +151,4 @@ function useSomeAsyncData(timeToWait: number) {
 }
 
 
-render(MyParentComponent as any);
+render(MyParentComponent);
