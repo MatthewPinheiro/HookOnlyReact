@@ -1,10 +1,20 @@
-import type { Component, ComponentTreeNode, UseStateArr } from './types';
-
-
 const RENDER_QUEUE = new Set<ComponentTreeNode>();
 const EFFECTS_QUEUE: [ComponentTreeNode, () => void][] = [];
 let CURRENT_COMPONENT: ComponentTreeNode;
 let CURRENT_HOOK_INDEX: number;
+
+
+
+export type Component = (props: any) => [Component, Record<string, any>] | [];
+
+export type ComponentTreeNode = {
+    fn: Component;
+    props: Record<string, any>;
+    hooks: any[];
+    child?: ComponentTreeNode | undefined;
+};
+
+export type UseStateArr<T> = [T, (toUpdate: T) => void];
 
 
 function _recursivelyRender(treeNode: ComponentTreeNode) {
@@ -98,3 +108,13 @@ export function render(initial?: Function) {
     // @ts-ignore
     setImmediate(render).unref();
 }
+
+
+
+export function createElement(fn: Component | null, props: any): ReturnType<Component>  {
+    return fn && props
+        ? [fn, props]
+        : [];
+}
+
+export const Fragment = null;
