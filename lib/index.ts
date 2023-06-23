@@ -1,26 +1,23 @@
-/** @typedef {import('./types').Component} Component */
-/** @typedef {import('./types').ComponentTreeNode} ComponentTreeNode */
-/** 
- * @typedef {import('./types').UseStateArr<T>} UseStateArr 
- * @template T
- **/
+const RENDER_QUEUE = new Set<ComponentTreeNode>();
+const EFFECTS_QUEUE: [ComponentTreeNode, () => void][] = [];
+let CURRENT_COMPONENT: ComponentTreeNode;
+let CURRENT_HOOK_INDEX: number;
 
 
 
-const RENDER_QUEUE = /** @type {Set<ComponentTreeNode>} */ (new Set());
-const EFFECTS_QUEUE = /** @type {([ComponentTreeNode, () => void])[]} */ ([]);
+export type Component = (props: any) => [Component, Record<string, any>] | [];
 
-/** @type {ComponentTreeNode} */
-let CURRENT_COMPONENT;
-/** @type {number} */
-let CURRENT_HOOK_INDEX;
+export type ComponentTreeNode = {
+    fn: Component;
+    props: Record<string, any>;
+    hooks: any[];
+    child?: ComponentTreeNode | undefined;
+};
+
+export type UseStateArr<T> = [T, (toUpdate: T) => void];
 
 
-
-/**
- * @param {ComponentTreeNode} treeNode
- */
-function _recursivelyRender(treeNode) {
+function _recursivelyRender(treeNode: ComponentTreeNode) {
     RENDER_QUEUE.delete(treeNode);
     CURRENT_COMPONENT = treeNode;
     CURRENT_HOOK_INDEX = 0;
@@ -46,15 +43,12 @@ function _recursivelyRender(treeNode) {
 
 
 
-/**
- * 
- * @param {() => void} fn 
- * @param {any[]} [deps]
- */
-exports.useEffect = function(fn, deps) {
+
+
+
+export function useEffect(fn: () => void, deps?: any[]) {
     const currentComponent = CURRENT_COMPONENT;
-    /** @type {any[] | undefined} */
-    const prevDeps = currentComponent.hooks[CURRENT_HOOK_INDEX];
+    const prevDeps: any[] | undefined = currentComponent.hooks[CURRENT_HOOK_INDEX];
 
     const shouldRun = prevDeps && deps
         ? prevDeps.some((_, i) => prevDeps[i] !== deps[i])
@@ -74,16 +68,10 @@ exports.useEffect = function(fn, deps) {
 
 
 
-/**
- * @template T
- * @param {T} initialVal 
- * @returns {UseStateArr<T>}
- */
-exports.useState = function useState(initialVal) {
+export function useState<T>(initialVal: T): UseStateArr<T> {
     const currentComponent = CURRENT_COMPONENT;
     if (CURRENT_HOOK_INDEX >= currentComponent.hooks.length) {
-        /** @type {UseStateArr<T>} */
-        const stateArr = [initialVal, (toUpdate) => {
+        const stateArr: UseStateArr<T> = [initialVal, (toUpdate) => {
             const valAtThisTime = stateArr[0];
             if (valAtThisTime !== toUpdate) {
                 stateArr[0] = toUpdate;
@@ -101,13 +89,9 @@ exports.useState = function useState(initialVal) {
 
 
 
-/**
- * 
- * @param {Function} [initial]
- */
-exports.render = function render(initial) {
+export function render(initial?: Function) {
     if (initial) {
-        RENDER_QUEUE.add({ fn: /** @type {Component} */ (initial), props: {}, hooks: [] });
+        RENDER_QUEUE.add({ fn: initial as Component, props: {}, hooks: [] });
     }
 
     for (const node of RENDER_QUEUE) {
@@ -124,3 +108,13 @@ exports.render = function render(initial) {
     // @ts-ignore
     setImmediate(render).unref();
 }
+
+
+
+export function createElement(fn: Component | null, props: any): ReturnType<Component>  {
+    return fn && props
+        ? [fn, props]
+        : [];
+}
+
+export const Fragment = null;
