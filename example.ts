@@ -1,4 +1,4 @@
-const { render, useState, useEffect } = require(".");
+import { render, useState, useEffect } from "./index";
 
 
 
@@ -21,6 +21,7 @@ function MyParentComponent() {
     });
 
     return [MyChildComponent, {}];
+    // return (<MyChildComponent/>);
 }
 
 
@@ -33,12 +34,13 @@ function MyChildComponent() {
     }, []);
 
     return [];
+    // return (<></>);
 }
 
 
 
 function useMyCustomAsyncHook() {
-    const [data, setData] = /** @type {typeof useState<any>} */ (useState)(null);
+    const [data, setData] = useState<any>(null);
 
     useEffect(() => {
         console.log("useSomeAsyncData useEffect");
